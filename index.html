@@ -3,81 +3,1550 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>St. Hera's Hospital — Ransomware Simulation Capstone</title>
+<title>St. Hera's Hospital — Ransomware Simulation</title>
+<style>
+/* ============================================================
+   ROOT & RESET
+   ============================================================ */
+:root {
+  --bg:       #010409;
+  --bg2:      #0D1117;
+  --card:     #0D1F12;
+  --border:   #1a3a1a;
+  --green:    #00FF41;
+  --green2:   #3FB950;
+  --green3:   #0a5c0a;
+  --red:      #FF3B3B;
+  --red2:     #8B0000;
+  --blue:     #58A6FF;
+  --orange:   #F0883E;
+  --yellow:   #E3B341;
+  --purple:   #9F7AEA;
+  --white:    #E6EDF3;
+  --gray:     #30383F;
+  --gray2:    #8B949E;
+  --font-mono: 'Courier New', 'Lucida Console', monospace;
+}
 
-<!-- External CSS -->
-<link rel="stylesheet" href="css/style.css">
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+/* ============================================================
+   PARTICLE CANVAS
+   ============================================================ */
+#particle-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Scanline overlay */
+#scanlines {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.15) 2px,
+    rgba(0,0,0,0.15) 4px
+  );
+}
+
+/* Vignette */
+#vignette {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center,
+    transparent 60%,
+    rgba(0,0,0,0.7) 100%
+  );
+}
+
+/* ============================================================
+   HUD ELEMENTS
+   ============================================================ */
+#hud-top {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 36px;
+  background: rgba(1,4,9,0.9);
+  border-bottom: 1px solid var(--green3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 50;
+  font-size: 11px;
+  color: var(--green);
+}
+
+.hud-label { opacity: 0.6; margin-right: 8px; }
+
+#hud-time { font-size: 11px; color: var(--green); opacity: 0.8; }
+
+#progress-track {
+  position: fixed;
+  top: 36px; left: 0; right: 0;
+  height: 2px;
+  background: var(--gray);
+  z-index: 50;
+}
+#progress-fill {
+  height: 100%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  transition: width 0.4s ease;
+}
+
+#hud-bottom {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 30px;
+  background: rgba(1,4,9,0.9);
+  border-top: 1px solid var(--green3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 50;
+  font-size: 10px;
+  color: var(--green);
+  opacity: 0.7;
+}
+
+/* ============================================================
+   NAV BUTTONS
+   ============================================================ */
+.nav-btn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px; height: 80px;
+  background: rgba(0,255,65,0.05);
+  border: 1px solid var(--green3);
+  color: var(--green);
+  font-size: 18px;
+  cursor: pointer;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-family: var(--font-mono);
+}
+.nav-btn:hover {
+  background: rgba(0,255,65,0.12);
+  border-color: var(--green);
+  box-shadow: 0 0 12px rgba(0,255,65,0.3);
+}
+#prev-btn { left: 0; border-left: none; }
+#next-btn { right: 0; border-right: none; }
+
+/* ============================================================
+   SLIDES
+   ============================================================ */
+#slides-wrap {
+  position: fixed;
+  top: 38px; left: 0; right: 0; bottom: 32px;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.slide {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  padding: 36px 72px;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(40px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.slide.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(0);
+}
+
+.slide.exit {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+.slide-title {
+  font-size: 11px;
+  color: var(--green);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+
+.slide-title::before { content: '// '; opacity: 0.5; }
+
+h1 {
+  font-size: 48px;
+  font-weight: 900;
+  color: var(--white);
+  line-height: 1.05;
+  letter-spacing: -1px;
+}
+
+h2 {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 20px;
+  letter-spacing: -0.5px;
+}
+
+h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 6px;
+}
+
+p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--gray2);
+}
+
+/* ============================================================
+   GLITCH EFFECT
+   ============================================================ */
+.glitch {
+  position: relative;
+  display: inline-block;
+}
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+.glitch::before {
+  color: var(--red);
+  animation: glitch-1 3s infinite;
+  clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+}
+.glitch::after {
+  color: var(--blue);
+  animation: glitch-2 3s infinite;
+  clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+}
+@keyframes glitch-1 {
+  0%, 90%, 100% { transform: translate(0); }
+  92% { transform: translate(-3px, 1px); }
+  94% { transform: translate(3px, -1px); }
+  96% { transform: translate(-2px, 0); }
+}
+@keyframes glitch-2 {
+  0%, 88%, 100% { transform: translate(0); }
+  90% { transform: translate(3px, 2px); }
+  93% { transform: translate(-3px, -2px); }
+  95% { transform: translate(2px, 1px); }
+}
+
+/* ============================================================
+   TERMINAL BOX
+   ============================================================ */
+.terminal {
+  background: rgba(0,10,0,0.8);
+  border: 1px solid var(--green3);
+  border-radius: 4px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.terminal-bar {
+  background: var(--green3);
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.t-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+.t-title { font-size: 11px; color: var(--green); margin-left: auto; opacity: 0.7; }
+.terminal-body {
+  padding: 12px 16px;
+  color: var(--green);
+  line-height: 1.8;
+}
+.t-prompt { color: var(--green); opacity: 0.5; }
+.t-cmd { color: var(--green); }
+.t-out { color: var(--gray2); }
+.t-red { color: var(--red); }
+.t-yellow { color: var(--yellow); }
+.t-blue { color: var(--blue); }
+.t-blink {
+  display: inline-block;
+  width: 8px; height: 14px;
+  background: var(--green);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.card {
+  background: rgba(13,31,18,0.7);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--green);
+}
+.card.red::before { background: var(--red); }
+.card.blue::before { background: var(--blue); }
+.card.yellow::before { background: var(--yellow); }
+.card.orange::before { background: var(--orange); }
+.card.purple::before { background: var(--purple); }
+
+.card-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+
+/* ============================================================
+   GRID
+   ============================================================ */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.g4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.recon-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+.recon-table thead tr {
+  border-bottom: 1px solid var(--green3);
+}
+.recon-table th {
+  padding: 8px 12px;
+  color: var(--green);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: left;
+  font-weight: 400;
+  opacity: 0.7;
+}
+.recon-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(26,58,26,0.4);
+  color: var(--gray2);
+}
+.recon-table tbody tr:hover { background: rgba(0,255,65,0.03); }
+
+/* ============================================================
+   PHASE CARDS (STORY ARC)
+   ============================================================ */
+.phase {
+  background: rgba(13,31,18,0.6);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.phase:hover {
+  border-color: var(--green);
+  box-shadow: 0 0 12px rgba(0,255,65,0.1);
+}
+.phase-num {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  flex-shrink: 0;
+  color: var(--bg);
+  font-family: var(--font-mono);
+}
+
+/* ============================================================
+   VM CARDS
+   ============================================================ */
+.vm-card {
+  background: rgba(13,31,18,0.7);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px;
+  text-align: center;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.vm-card:hover {
+  box-shadow: 0 0 16px rgba(0,255,65,0.12);
+  border-color: var(--green);
+}
+.vm-card .vm-tag {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 2px;
+  margin-bottom: 10px;
+  background: rgba(0,255,65,0.1);
+  color: var(--green);
+  border: 1px solid var(--green3);
+}
+.vm-card .vm-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.vm-card .vm-ip { font-size: 11px; color: var(--gray2); margin-bottom: 10px; font-family: var(--font-mono); }
+.vm-card .vm-tools { font-size: 10px; color: var(--gray2); line-height: 1.8; }
+.vm-arrow { display: flex; align-items: center; justify-content: center; color: var(--green3); font-size: 20px; }
+
+/* ============================================================
+   RULE ROW
+   ============================================================ */
+.rule-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 150px;
+  padding: 9px 16px;
+  border-bottom: 1px solid rgba(26,58,26,0.3);
+  align-items: center;
+  font-size: 12px;
+  transition: background 0.2s;
+}
+.rule-row:hover { background: rgba(0,255,65,0.03); }
+.rule-row:last-child { border-bottom: none; }
+.rule-id { font-family: var(--font-mono); font-weight: 700; }
+
+/* ============================================================
+   TAKEAWAY
+   ============================================================ */
+.takeaway {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(26,58,26,0.3);
+}
+.takeaway:last-child { border-bottom: none; }
+.t-badge {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+
+/* ============================================================
+   WIN CARD
+   ============================================================ */
+.win-card {
+  background: rgba(13,31,18,0.6);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 16px;
+  border-left: 3px solid;
+}
+
+/* ============================================================
+   IMPROVE ITEM
+   ============================================================ */
+.improve {
+  display: flex; gap: 12px;
+  margin-bottom: 14px;
+}
+.improve-bar {
+  width: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   SCREENSHOT SLOT
+   ============================================================ */
+.ss-slot {
+  background: rgba(0,10,0,0.6);
+  border: 1px dashed var(--green3);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--green3);
+  font-size: 11px;
+  text-align: center;
+  padding: 12px;
+  position: relative;
+  overflow: hidden;
+  min-height: 120px;
+}
+.ss-slot img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.ss-icon { font-size: 28px; margin-bottom: 8px; opacity: 0.3; }
+.ss-label { font-size: 10px; opacity: 0.5; font-family: var(--font-mono); }
+
+/* ============================================================
+   SCAN ANIMATION
+   ============================================================ */
+@keyframes scan {
+  0% { top: -10%; }
+  100% { top: 110%; }
+}
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  opacity: 0.15;
+  animation: scan 4s linear infinite;
+  pointer-events: none;
+}
+
+/* ============================================================
+   PULSE DOT
+   ============================================================ */
+.pulse-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ============================================================
+   TAG
+   ============================================================ */
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  margin: 2px;
+  border: 1px solid;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================================
+   SLIDE 1 — TITLE
+   ============================================================ */
+#s1 { align-items: center; justify-content: center; text-align: center; }
+.cross-wrap { position: relative; display: inline-block; margin-bottom: 24px; }
+.cross-svg { width: 80px; height: 80px; }
+.title-sub {
+  font-size: 13px;
+  color: var(--green);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin: 12px 0 6px;
+  opacity: 0.8;
+}
+.title-main {
+  font-size: 54px;
+  font-weight: 900;
+  color: var(--white);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.title-red { color: var(--red); }
+.title-byline {
+  font-size: 12px;
+  color: var(--gray2);
+  margin: 16px 0 36px;
+  letter-spacing: 2px;
+  opacity: 0.7;
+}
+.vm-badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.vm-badge {
+  background: rgba(13,31,18,0.8);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 18px;
+  min-width: 130px;
+}
+.badge-name { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+.badge-role { font-size: 10px; color: var(--gray2); opacity: 0.7; }
+
+/* ============================================================
+   ALERT BADGE
+   ============================================================ */
+.alert-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  border: 1px solid;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================================
+   CRITICAL BANNER
+   ============================================================ */
+.critical-banner {
+  background: rgba(139,0,0,0.2);
+  border: 1px solid var(--red);
+  border-radius: 4px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: flash-border 2s ease-in-out infinite;
+}
+@keyframes flash-border {
+  0%, 100% { border-color: var(--red); box-shadow: 0 0 8px rgba(255,59,59,0.2); }
+  50% { border-color: var(--red2); box-shadow: none; }
+}
+
+/* ============================================================
+   MATRIX RAIN MINI
+   ============================================================ */
+#matrix-mini {
+  position: absolute;
+  top: 0; right: 0;
+  width: 180px; height: 100%;
+  opacity: 0.05;
+  pointer-events: none;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--green);
+}
+
+/* ============================================================
+   SCROLL INDICATOR
+   ============================================================ */
+.scroll-ind {
+  position: absolute;
+  bottom: 12px; left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+.s-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gray);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.s-dot.active {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+
+/* Responsiveness */
+@media (max-width: 900px) {
+  .slide { padding: 24px; }
+  h2 { font-size: 22px; }
+  .g2, .g3, .g4 { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
 
-<div id="progress-bar"></div>
-<button class="nav-btn" id="prev-btn" onclick="changeSlide(-1)">&#8592;</button>
-<button class="nav-btn" id="next-btn" onclick="changeSlide(1)">&#8594;</button>
-<div id="counter">1 / 9</div>
-<div id="hint">← → arrow keys or spacebar to navigate</div>
+<!-- PARTICLE CANVAS -->
+<canvas id="particle-canvas"></canvas>
+<div id="scanlines"></div>
+<div id="vignette"></div>
 
-<div id="slides">
-
-  <!-- SLIDE 1: TITLE -->
-<div class="slide active" id="slide-1">
-
-  <!-- Icon -->
-  <div class="cross-icon">✚</div>
-
-  <!-- Title -->
-  <h1>St. Hera's Hospital</h1>
-
-  <!-- Subtitle -->
-  <div class="subtitle">Phishing‑Initiated Ransomware Simulation</div>
-
-  <!-- Metadata -->
-  <div class="meta">
-    Cybersecurity Bootcamp — Capstone Project &nbsp;|&nbsp; Team: Garret Frazier, Majd Shouhy, Zana Lee &nbsp;|&nbsp; August 2026
+<!-- HUD TOP -->
+<div id="hud-top">
+  <div>
+    <span class="hud-label">SYSTEM:</span>
+    <span style="color:var(--green)">CYBERLAB_CAPSTONE_v2.0</span>
+    &nbsp;&nbsp;
+    <span class="hud-label">STATUS:</span>
+    <span class="pulse-dot"></span>
+    <span style="color:var(--green);margin-left:6px">ACTIVE</span>
+    &nbsp;&nbsp;
+    <span class="hud-label">HOST:</span>
+    <span style="color:var(--green)">stherashospital.org</span>
   </div>
-
-  <!-- VM Badges -->
-  <div class="vm-badges">
-
-    <div class="vm-badge">
-      <div class="badge-name" style="color:var(--red)">Kali Linux</div>
-      <div class="badge-role">Attacker</div>
-    </div>
-
-    <div class="vm-badge">
-      <div class="badge-name" style="color:var(--orange)">Nurse Workstation</div>
-      <div class="badge-role">Victim</div>
-    </div>
-
-    <div class="vm-badge">
-      <div class="badge-name" style="color:var(--yellow)">Hospital Server</div>
-      <div class="badge-role">Target</div>
-    </div>
-
-    <div class="vm-badge">
-      <div class="badge-name" style="color:var(--green)">Wazuh SIEM</div>
-      <div class="badge-role">Defender</div>
-    </div>
-
-  </div>
+  <div id="hud-time"></div>
 </div>
 
-  <!-- SLIDE 2 -->
-  <!-- (Your slides 2–9 remain exactly the same — no changes needed) -->
-
-  <!-- SLIDE 2: INTRODUCTION -->
-  <!-- SLIDE 3: LAB ENVIRONMENT -->
-  <!-- SLIDE 4: STORY ARC -->
-  <!-- SLIDE 5: DEMO SCREENSHOTS -->
-  <!-- SLIDE 6: MITRE ATT&CK -->
-  <!-- SLIDE 7: WAZUH RULES -->
-  <!-- SLIDE 8: WHAT WENT WELL -->
-  <!-- SLIDE 9: CONCLUSION -->
-
+<!-- PROGRESS BAR -->
+<div id="progress-track">
+  <div id="progress-fill" style="width:11.1%"></div>
 </div>
 
-<!-- External JS -->
-<script src="js/main.js"></script>
+<!-- NAV BUTTONS -->
+<button class="nav-btn" id="prev-btn" onclick="changeSlide(-1)">&#9664;</button>
+<button class="nav-btn" id="next-btn" onclick="changeSlide(1)">&#9654;</button>
 
+<!-- SLIDES WRAPPER -->
+<div id="slides-wrap">
+
+  <!-- ============================================================
+       SLIDE 1 — TITLE
+       ============================================================ -->
+  <div class="slide active" id="s1">
+    <div class="scan-line"></div>
+
+    <!-- Animated cross -->
+    <div class="cross-wrap">
+      <svg class="cross-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="30" y="5" width="20" height="70" fill="#FF3B3B" opacity="0.9"/>
+        <rect x="5" y="30" width="70" height="20" fill="#FF3B3B" opacity="0.9"/>
+        <rect x="30" y="5" width="20" height="70" fill="none" stroke="#FF3B3B" stroke-width="1" opacity="0.4">
+          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="5" y="30" width="70" height="20" fill="none" stroke="#FF3B3B" stroke-width="1" opacity="0.4">
+          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite"/>
+        </rect>
+      </svg>
+    </div>
+
+    <div class="title-sub">// CAPSTONE PROJECT</div>
+    <div class="title-main glitch" data-text="St. Hera's Hospital">
+      St. <span class="title-red">Hera's</span> Hospital
+    </div>
+    <div style="font-size:18px;color:var(--red);letter-spacing:2px;margin:8px 0;font-weight:700">
+      PHISHING-INITIATED RANSOMWARE SIMULATION
+    </div>
+    <div class="title-byline">
+      CYBERSECURITY BOOTCAMP &nbsp;/&nbsp; [YOUR TEAM NAME] &nbsp;/&nbsp; [DATE]
+    </div>
+
+    <div class="vm-badges">
+      <div class="vm-badge" style="border-color:rgba(255,59,59,0.3)">
+        <div class="badge-name" style="color:var(--red)">Kali Linux</div>
+        <div class="badge-role">192.168.0.218 · Attacker</div>
+      </div>
+      <div class="vm-badge" style="border-color:rgba(240,136,62,0.3)">
+        <div class="badge-name" style="color:var(--orange)">WIN-NURSE-WS</div>
+        <div class="badge-role">192.168.0.236 · Victim</div>
+      </div>
+      <div class="vm-badge" style="border-color:rgba(227,179,65,0.3)">
+        <div class="badge-name" style="color:var(--yellow)">WIN-HOSPITAL-SRV</div>
+        <div class="badge-role">192.168.0.237 · Target</div>
+      </div>
+      <div class="vm-badge" style="border-color:rgba(0,255,65,0.3)">
+        <div class="badge-name" style="color:var(--green)">Wazuh OVA</div>
+        <div class="badge-role">192.168.0.177 · SIEM</div>
+      </div>
+    </div>
+
+    <div style="margin-top:28px;font-size:10px;color:var(--green);opacity:0.3;letter-spacing:3px">
+      PRESS → OR SPACEBAR TO CONTINUE
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SLIDE 2 — INTRODUCTION
+       ============================================================ -->
+  <div class="slide" id="s2">
+    <div class="scan-line"></div>
+    <div class="slide-title">01 / Introduction</div>
+    <h2>The Problem &amp; Our Solution</h2>
+
+    <div class="g2" style="flex:1;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card red">
+          <div class="card-label" style="color:var(--red)">// THE PROBLEM</div>
+          <p style="font-size:14px;margin-bottom:10px">
+            Hospitals are the <strong style="color:var(--red)">#1 ransomware target</strong>.
+            In 2024 alone, over 140 U.S. hospitals were compromised — disrupting patient care,
+            exposing sensitive records, and costing millions in recovery.
+          </p>
+          <div style="background:rgba(139,0,0,0.15);border:1px solid rgba(255,59,59,0.2);border-radius:3px;padding:10px 14px;margin-top:8px">
+            <div style="font-size:10px;color:var(--red);letter-spacing:2px;margin-bottom:4px">ENTRY VECTOR — 91% OF ATTACKS</div>
+            <div style="font-size:22px;font-weight:900;color:var(--red)">A SINGLE PHISHING EMAIL</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label" style="color:var(--green)">// MAJOR TAKEAWAY</div>
+          <p style="font-size:14px;color:var(--white)">
+            One employee's mistake can take down an entire hospital network.
+            Understanding the full attack chain is the first step to defending against it.
+          </p>
+        </div>
+      </div>
+
+      <div class="card blue" style="display:flex;flex-direction:column;gap:14px">
+        <div class="card-label" style="color:var(--blue)">// OUR SOLUTION</div>
+        <p style="font-size:13px">
+          A fully automated, end-to-end hospital ransomware simulation — demonstrating
+          exactly how these attacks unfold and how a SOC analyst detects them using Wazuh SIEM.
+        </p>
+        <div class="terminal" style="flex:1">
+          <div class="terminal-bar">
+            <div class="t-dot" style="background:#FF5F56"></div>
+            <div class="t-dot" style="background:#FFBD2E"></div>
+            <div class="t-dot" style="background:#27C93F"></div>
+            <div class="t-title">cyberlab@kali:~</div>
+          </div>
+          <div class="terminal-body">
+            <div><span class="t-prompt">$ </span><span class="t-cmd">cat /etc/motd</span></div>
+            <div class="t-out"> </div>
+            <div class="t-yellow"> ★ CYBERLAB CAPSTONE PROJECT ★</div>
+            <div class="t-out"> </div>
+            <div><span class="t-green2" style="color:var(--green2)"> VMs:    </span><span class="t-out">4 virtual machines</span></div>
+            <div><span class="t-green2" style="color:var(--green2)"> Rules:  </span><span class="t-out">18 custom Wazuh rules</span></div>
+            <div><span class="t-green2" style="color:var(--green2)"> Target: </span><span class="t-out">stherashospital.org</span></div>
+            <div><span class="t-green2" style="color:var(--green2)"> Mode:   </span><span class="t-red">FULL KILL CHAIN</span></div>
+            <div class="t-out"> </div>
+            <div><span class="t-prompt">$ </span><span class="t-cmd">sudo bash /opt/ransomware-sim/watcher.sh</span><span class="t-blink"></span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="tag" style="color:var(--green);border-color:var(--green3);background:rgba(0,255,65,0.05)">4 VIRTUAL MACHINES</span>
+          <span class="tag" style="color:var(--blue);border-color:rgba(88,166,255,0.3);background:rgba(88,166,255,0.05)">18 CUSTOM RULES</span>
+          <span class="tag" style="color:var(--red);border-color:rgba(255,59,59,0.3);background:rgba(255,59,59,0.05)">FULL KILL CHAIN</span>
+          <span class="tag" style="color:var(--yellow);border-color:rgba(227,179,65,0.3);background:rgba(227,179,65,0.05)">LEVEL 2 LATERAL MOVEMENT</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SLIDE 3 — LAB ENVIRONMENT
+       ============================================================ -->
+  <div class="slide" id="s3">
+    <div class="scan-line"></div>
+    <div class="slide-title">02 / Lab Environment</div>
+    <h2>Isolated Lab Architecture</h2>
+
+    <!-- VM row -->
+    <div style="display:grid;grid-template-columns:1fr 32px 1fr 32px 1fr 32px 1fr;gap:0;align-items:center;margin-bottom:16px">
+      <div class="vm-card" style="border-top:2px solid var(--red)">
+        <div class="vm-tag" style="color:var(--red);border-color:rgba(255,59,59,0.3);background:rgba(255,59,59,0.05)">ATTACKER</div>
+        <div class="vm-name" style="color:var(--red)">Kali Linux</div>
+        <div class="vm-ip">192.168.0.218</div>
+        <div class="vm-tools">Apache2 &bull; PHP &bull; Python<br>nmap &bull; smbclient &bull; nbtscan<br>ransomware_sim.py</div>
+      </div>
+      <div class="vm-arrow">→</div>
+      <div class="vm-card" style="border-top:2px solid var(--orange)">
+        <div class="vm-tag" style="color:var(--orange);border-color:rgba(240,136,62,0.3);background:rgba(240,136,62,0.05)">VICTIM</div>
+        <div class="vm-name" style="color:var(--orange)">WIN-NURSE-WS</div>
+        <div class="vm-ip">192.168.0.236</div>
+        <div class="vm-tools">Windows 11<br>Wazuh Agent<br>Edge Browser</div>
+      </div>
+      <div class="vm-arrow">→</div>
+      <div class="vm-card" style="border-top:2px solid var(--yellow)">
+        <div class="vm-tag" style="color:var(--yellow);border-color:rgba(227,179,65,0.3);background:rgba(227,179,65,0.05)">TARGET</div>
+        <div class="vm-name" style="color:var(--yellow)">WIN-HOSPITAL-SRV</div>
+        <div class="vm-ip">192.168.0.237</div>
+        <div class="vm-tools">Windows Server<br>SMB Shares<br>Wazuh Agent</div>
+      </div>
+      <div class="vm-arrow">→</div>
+      <div class="vm-card" style="border-top:2px solid var(--green)">
+        <div class="vm-tag" style="color:var(--green);border-color:var(--green3);background:rgba(0,255,65,0.05)">DEFENDER</div>
+        <div class="vm-name" style="color:var(--green)">Wazuh OVA</div>
+        <div class="vm-ip">192.168.0.177</div>
+        <div class="vm-tools">Wazuh Manager<br>Wazuh Indexer<br>CYBERLAB Dashboard</div>
+      </div>
+    </div>
+
+    <!-- Details row -->
+    <div class="g2" style="gap:12px">
+      <div class="card yellow">
+        <div class="card-label" style="color:var(--yellow)">// FICTIONAL LAB — All data simulated</div>
+        <div class="g2" style="gap:8px">
+          <div>
+            <p>🏥 <span style="color:var(--white)">Hospital:</span> St. Hera's Hospital</p>
+            <p>👩‍⚕️ <span style="color:var(--white)">Nurse:</span> Nicole Rivera (n.rivera)</p>
+          </div>
+          <div>
+            <p>🌐 <span style="color:var(--white)">Domain:</span> stherashospital.org</p>
+            <p>📋 <span style="color:var(--white)">Patients:</span> John Doe, Maria Vasquez</p>
+          </div>
+        </div>
+      </div>
+      <!-- Screenshot slot -->
+      <div class="ss-slot">
+        <div class="ss-icon">🖥️</div>
+        <div class="ss-label">
+          ADD SCREENSHOT: VirtualBox with all 4 VMs<br>
+          <code>&lt;img src="screenshots/virtualbox.png"&gt;</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SLIDE 4 — STORY ARC
+       ============================================================ -->
+  <div class="slide" id="s4">
+    <div class="scan-line"></div>
+    <div class="slide-title">03 / Story-Arc</div>
+    <h2>The Attack Chain — Nicole Rivera, RN</h2>
+
+    <div class="g3" style="flex:1;gap:12px">
+      <div class="phase">
+        <div class="phase-num" style="background:var(--red)">01</div>
+        <div>
+          <h3 style="color:var(--red);margin-bottom:4px">Phishing Email</h3>
+          <p style="font-size:12px">Nicole receives an urgent IT Security email warning her hospital account will be suspended. She clicks the link.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:var(--orange)">02</div>
+        <div>
+          <h3 style="color:var(--orange);margin-bottom:4px">Credential Theft</h3>
+          <p style="font-size:12px">She enters n.rivera / Summer2026! on the fake portal. Credentials captured instantly by Kali's PHP backend.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:var(--yellow)">03</div>
+        <div>
+          <h3 style="color:var(--yellow);margin-bottom:4px">Network Recon</h3>
+          <p style="font-size:12px">Attacker runs nbtscan and Nmap. Discovers WIN-HOSPITAL-SERVER at 192.168.0.237 with port 445 open.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:var(--green2)">04</div>
+        <div>
+          <h3 style="color:var(--green2);margin-bottom:4px">Lateral Movement</h3>
+          <p style="font-size:12px">Stolen credentials authenticate to the hospital server via smbclient. Patient records browsed and exfiltrated.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:var(--blue)">05</div>
+        <div>
+          <h3 style="color:var(--blue);margin-bottom:4px">Ransomware Impact</h3>
+          <p style="font-size:12px">ransomware_sim.py locks files on BOTH VMs simultaneously. Ransom note delivered. Hospital portal goes dark after 10s.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:var(--purple)">06</div>
+        <div>
+          <h3 style="color:var(--purple);margin-bottom:4px">SIEM Detection</h3>
+          <p style="font-size:12px">Wazuh fires 7 alert categories in real time. CYBERLAB Security Monitor dashboard lights up. SOC queue populated.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="critical-banner" style="margin-top:12px">
+      <span style="color:var(--red);font-size:18px">⚠</span>
+      <div>
+        <div style="font-size:10px;color:var(--red);letter-spacing:2px;margin-bottom:2px">FULL ATTACK DURATION</div>
+        <div style="font-size:14px;color:var(--white)">Phishing click → hospital lockdown in <strong style="color:var(--red)">under 60 seconds</strong> — fully automated</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SLIDE 5 — DEMO SCREENSHOTS
+       ============================================================ -->
+  <div class="slide" id="s5">
+    <div class="scan-line"></div>
+    <div class="slide-title">04 / Live Demo</div>
+    <h2>Attack Phases — Evidence</h2>
+
+    <div class="g3" style="flex:1;gap:12px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:9px;color:var(--red);letter-spacing:2px">// PHASE 01 — PHISHING EMAIL</div>
+        <div class="ss-slot" style="flex:1">
+          <div class="ss-icon">📧</div>
+          <div class="ss-label">email.html — fake Outlook inbox<br><code>screenshots/email.png</code></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:9px;color:var(--orange);letter-spacing:2px">// PHASE 02 — CREDENTIAL CAPTURE</div>
+        <div class="ss-slot" style="flex:1">
+          <div class="ss-icon">🔑</div>
+          <div class="ss-label">creds.txt terminal output<br><code>screenshots/creds.png</code></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:9px;color:var(--yellow);letter-spacing:2px">// PHASE 03 — FAKE DASHBOARD</div>
+        <div class="ss-slot" style="flex:1">
+          <div class="ss-icon">🏥</div>
+          <div class="ss-label">dashboard.html hospital portal<br><code>screenshots/dashboard.png</code></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:9px;color:var(--green2);letter-spacing:2px">// PHASE 04 — SMB ACCESS</div>
+        <div class="ss-slot" style="flex:1">
+          <div class="ss-icon">📂</div>
+          <div class="ss-label">smbclient PatientRecords access<br><code>screenshots/smb.png</code></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:9px;color:var(--blue);letter-spacing:2px">// PHASE 05 — LOCKED FILES</div>
+        <div class="ss-slot" style="flex:1">
+          <div class="ss-icon">🔒</div>
+          <div class="ss-label">RansomwareDemo .locked files<br><code>screenshots/locked.png</code></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:9px;color:var(--purple);letter-spacing:2px">// PHASE 06 — WAZUH DASHBOARD</div>
+        <div class="ss-slot" style="flex:1">
+          <div class="ss-icon">📊</div>
+          <div class="ss-label">CYBERLAB Security Monitor<br><code>screenshots/wazuh.png</code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SLIDE 6 — MITRE ATT&CK
+       ============================================================ -->
+  <div class="slide" id="s6">
+    <div class="scan-line"></div>
+    <div class="slide-title">05 / MITRE ATT&amp;CK</div>
+    <h2>Technique Coverage</h2>
+
+    <div class="terminal" style="flex:1">
+      <div class="terminal-bar">
+        <div class="t-dot" style="background:#FF5F56"></div>
+        <div class="t-dot" style="background:#FFBD2E"></div>
+        <div class="t-dot" style="background:#27C93F"></div>
+        <div class="t-title">MITRE_ATT&amp;CK_NAVIGATOR — St. Hera's Hospital</div>
+      </div>
+      <div class="terminal-body" style="padding:0">
+        <table class="recon-table">
+          <thead>
+            <tr>
+              <th>PHASE</th>
+              <th>TECHNIQUE</th>
+              <th>ID</th>
+              <th>HOW WE DEMONSTRATED IT</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="color:var(--red)">Initial Access</td>
+              <td style="color:var(--white)">Phishing</td>
+              <td style="color:var(--blue);font-weight:700">T1566</td>
+              <td>Fake Outlook IT Security email to nurse workstation</td>
+            </tr>
+            <tr>
+              <td style="color:var(--red)">Credential Access</td>
+              <td style="color:var(--white)">Spearphishing Link</td>
+              <td style="color:var(--blue);font-weight:700">T1566.001</td>
+              <td>PHP login.php captured n.rivera credentials via fake portal</td>
+            </tr>
+            <tr>
+              <td style="color:var(--orange)">Discovery</td>
+              <td style="color:var(--white)">Network Service Discovery</td>
+              <td style="color:var(--blue);font-weight:700">T1046</td>
+              <td>nmap -sV -sC revealing SMB port 445 on hospital server</td>
+            </tr>
+            <tr>
+              <td style="color:var(--orange)">Discovery</td>
+              <td style="color:var(--white)">Remote System Discovery</td>
+              <td style="color:var(--blue);font-weight:700">T1018</td>
+              <td>arp-scan and nbtscan revealing WIN-HOSPITAL-SERVER hostname</td>
+            </tr>
+            <tr>
+              <td style="color:var(--yellow)">Lateral Movement</td>
+              <td style="color:var(--white)">Valid Accounts</td>
+              <td style="color:var(--blue);font-weight:700">T1078</td>
+              <td>smbclient authenticated with stolen n.rivera / Summer2026!</td>
+            </tr>
+            <tr>
+              <td style="color:var(--green2)">Collection</td>
+              <td style="color:var(--white)">Data from Network Share</td>
+              <td style="color:var(--blue);font-weight:700">T1039</td>
+              <td>smbclient get JohnDoe_chart.txt exfiltrated to Kali</td>
+            </tr>
+            <tr>
+              <td style="color:var(--purple)">Impact</td>
+              <td style="color:var(--white)">Data Encrypted for Impact</td>
+              <td style="color:var(--blue);font-weight:700">T1486</td>
+              <td>ransomware_sim.py renamed files to .locked on both VMs</td>
+            </tr>
+            <tr>
+              <td style="color:var(--purple)">Impact</td>
+              <td style="color:var(--white)">Service Stop</td>
+              <td style="color:var(--blue);font-weight:700">T1489</td>
+              <td>systemctl stop apache2 — hospital portal unreachable</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SLIDE 7 — WAZUH DETECTION RULES
+       ============================================================ -->
+  <div class="slide" id="s7">
+    <div class="scan-line"></div>
+    <div class="slide-title">06 / Detection Engineering</div>
+    <h2>Wazuh Custom Rules — 18 Written From Scratch</h2>
+
+    <div class="g2" style="flex:1;gap:14px">
+      <!-- Rules table -->
+      <div class="terminal" style="display:flex;flex-direction:column">
+        <div class="terminal-bar">
+          <div class="t-dot" style="background:#FF5F56"></div>
+          <div class="t-dot" style="background:#FFBD2E"></div>
+          <div class="t-dot" style="background:#27C93F"></div>
+          <div class="t-title">local_rules.xml — CYBERLAB</div>
+        </div>
+        <div style="padding:0;flex:1;overflow:auto">
+          <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:80px 1fr 120px;font-size:9px;color:var(--green);letter-spacing:2px;opacity:0.6">
+            <span>RULE_ID</span><span>DESCRIPTION</span><span>SEVERITY</span>
+          </div>
+          <div class="rule-row">
+            <span class="rule-id" style="color:var(--blue)">102</span>
+            <span style="color:var(--gray2)">SMB Network Logon Detected</span>
+            <span style="color:var(--blue)">Level 4</span>
+          </div>
+          <div class="rule-row">
+            <span class="rule-id" style="color:var(--red)">106</span>
+            <span style="color:var(--gray2)">.locked File Rename via FIM</span>
+            <span style="color:var(--red)">Level 15 ⚠ CRITICAL</span>
+          </div>
+          <div class="rule-row">
+            <span class="rule-id" style="color:var(--red)">107</span>
+            <span style="color:var(--gray2)">Ransom Note File Dropped</span>
+            <span style="color:var(--red)">Level 15 ⚠ CRITICAL</span>
+          </div>
+          <div class="rule-row">
+            <span class="rule-id" style="color:var(--red)">108</span>
+            <span style="color:var(--gray2)">Full Attack Chain Confirmed</span>
+            <span style="color:var(--red)">Level 15 ⚠ CRITICAL</span>
+          </div>
+          <div class="rule-row">
+            <span class="rule-id" style="color:var(--orange)">112</span>
+            <span style="color:var(--gray2)">After Hours SMB Logon (11pm-6am)</span>
+            <span style="color:var(--orange)">Level 10</span>
+          </div>
+          <div class="rule-row">
+            <span class="rule-id" style="color:var(--red)">113</span>
+            <span style="color:var(--gray2)">Mass Encryption — 2+ files in 120s</span>
+            <span style="color:var(--red)">Level 15 ⚠ CRITICAL</span>
+          </div>
+          <div class="rule-row">
+            <span class="rule-id" style="color:var(--yellow)">100101</span>
+            <span style="color:var(--gray2)">Operation Code Blue — SMB Access</span>
+            <span style="color:var(--yellow)">Level 8</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOC queue + CDB lists -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div class="card-label" style="color:var(--green)">// SOC ANALYST QUEUE</div>
+          <div class="terminal" style="margin-top:8px">
+            <div class="terminal-bar">
+              <div class="t-dot" style="background:#FF5F56"></div>
+              <div class="t-dot" style="background:#FFBD2E"></div>
+              <div class="t-dot" style="background:#27C93F"></div>
+            </div>
+            <div class="terminal-body">
+              <div><span class="t-prompt">DQL&gt; </span><span class="t-cmd">rule.groups:soc_queue</span></div>
+              <div class="t-out">Filtering to high-priority alerts only...</div>
+              <div class="t-yellow">→ Rule 106: .locked rename [CRITICAL]</div>
+              <div class="t-yellow">→ Rule 107: Ransom note drop [CRITICAL]</div>
+              <div class="t-yellow">→ Rule 108: Full attack chain [CRITICAL]</div>
+              <div class="t-yellow">→ Rule 113: Mass encryption [CRITICAL]</div>
+              <div class="t-yellow">→ Rule 100101: Code Blue SMB [HIGH]</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card blue">
+          <div class="card-label" style="color:var(--blue)">// CDB THREAT INTEL LISTS</div>
+          <p style="font-size:12px;margin-bottom:8px">Custom allowlists and blocklists for automated threat intelligence matching:</p>
+          <div style="font-size:12px;color:var(--green);font-family:var(--font-mono)">
+            <div>ocblue_suspicious_destinations</div>
+            <div style="color:var(--gray2);margin-left:12px;margin-bottom:6px">→ 192.168.0.218:simulated-phishing-portal</div>
+            <div>ocblue_trusted_smb_sources</div>
+            <div style="color:var(--gray2);margin-left:12px">→ 192.168.0.236:approved-hospital-system</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label" style="color:var(--green)">// WAZUH DASHBOARD — CYBERLAB SECURITY MONITOR</div>
+          <p style="font-size:12px">9-panel custom dashboard showing the full attack chain — Ransomware Events, SMB Logon Count, Mass Encryption, Full Attack Chain, Operation Code Blue, After Hours Logon, Alerts Over Time.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SLIDE 8 — WHAT WENT WELL + IMPROVEMENTS
+       ============================================================ -->
+  <div class="slide" id="s8">
+    <div class="scan-line"></div>
+    <div class="slide-title">07 / Assessment</div>
+    <h2>What Went Well &amp; Future Work</h2>
+
+    <div class="g2" style="flex:1;gap:14px">
+      <!-- Went well -->
+      <div>
+        <div style="font-size:9px;color:var(--green);letter-spacing:3px;margin-bottom:12px">// WHAT WENT WELL</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="win-card" style="border-left-color:var(--yellow)">
+            <div style="color:var(--yellow);font-size:12px;font-weight:700;margin-bottom:3px">⚡ FULL AUTOMATION</div>
+            <p style="font-size:12px">One phishing click triggers the entire kill chain — credential capture, file locking, portal shutdown — all automatically via watcher.sh.</p>
+          </div>
+          <div class="win-card" style="border-left-color:var(--blue)">
+            <div style="color:var(--blue);font-size:12px;font-weight:700;margin-bottom:3px">🔀 LEVEL 2 LATERAL MOVEMENT</div>
+            <p style="font-size:12px">Real pivot from nurse workstation to hospital server using only stolen SMB credentials. No additional exploits needed.</p>
+          </div>
+          <div class="win-card" style="border-left-color:var(--green)">
+            <div style="color:var(--green);font-size:12px;font-weight:700;margin-bottom:3px">🛡️ REAL SIEM DETECTION</div>
+            <p style="font-size:12px">Wazuh detected every phase of the attack in real time. 18 custom rules + CYBERLAB dashboard — all 9 panels fired.</p>
+          </div>
+          <div class="win-card" style="border-left-color:var(--red)">
+            <div style="color:var(--red);font-size:12px;font-weight:700;margin-bottom:3px">💀 TWO-MACHINE IMPACT</div>
+            <p style="font-size:12px">Both nurse workstation AND hospital server locked simultaneously — showing true ransomware network-wide scale.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Improvements -->
+      <div>
+        <div style="font-size:9px;color:var(--blue);letter-spacing:3px;margin-bottom:12px">// OPPORTUNITIES FOR IMPROVEMENT</div>
+        <div>
+          <div class="improve">
+            <div class="improve-bar" style="background:var(--red);min-height:52px"></div>
+            <div>
+              <div style="color:var(--white);font-size:13px;font-weight:700;margin-bottom:2px">Level 3 — Network-Wide Propagation</div>
+              <p style="font-size:12px">Nmap scan entire subnet, auto-target every Windows machine found — true ransomware worm behavior.</p>
+            </div>
+          </div>
+          <div class="improve">
+            <div class="improve-bar" style="background:var(--orange);min-height:52px"></div>
+            <div>
+              <div style="color:var(--white);font-size:13px;font-weight:700;margin-bottom:2px">Double Extortion</div>
+              <p style="font-size:12px">Exfiltrate patient records to Kali BEFORE locking — then threaten to publish. Mirrors LockBit and BlackCat real-world tactics.</p>
+            </div>
+          </div>
+          <div class="improve">
+            <div class="improve-bar" style="background:var(--yellow);min-height:52px"></div>
+            <div>
+              <div style="color:var(--white);font-size:13px;font-weight:700;margin-bottom:2px">Anti-Forensics Simulation</div>
+              <p style="font-size:12px">Stop Wazuh agent before encrypting to demonstrate attackers covering their tracks. Show agent-gone-silent detection.</p>
+            </div>
+          </div>
+          <div class="improve">
+            <div class="improve-bar" style="background:var(--green2);min-height:52px"></div>
+            <div>
+              <div style="color:var(--white);font-size:13px;font-weight:700;margin-bottom:2px">Email Delivery via Postfix</div>
+              <p style="font-size:12px">Deliver phishing email to actual Outlook inbox using a local mail server — more realistic than opening a browser page.</p>
+            </div>
+          </div>
+          <div class="improve">
+            <div class="improve-bar" style="background:var(--blue);min-height:52px"></div>
+            <div>
+              <div style="color:var(--white);font-size:13px;font-weight:700;margin-bottom:2px">Behavioral Analytics</div>
+              <p style="font-size:12px">Detect unusual user patterns before the attack completes — proactive threat hunting vs reactive alerting.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SLIDE 9 — CONCLUSION
+       ============================================================ -->
+  <div class="slide" id="s9">
+    <div class="scan-line"></div>
+    <div class="slide-title">08 / Conclusion</div>
+    <h2>Key Takeaways</h2>
+
+    <div class="critical-banner" style="margin-bottom:18px">
+      <span style="color:var(--red);font-size:22px">⚠</span>
+      <p style="font-size:14px;color:var(--white)">
+        A single phishing email — sent to one nurse — was enough to compromise credentials,
+        access patient records, and lock down an entire hospital server automatically.
+        <strong style="color:var(--red)">This is not hypothetical. This is exactly how real hospital ransomware works.</strong>
+      </p>
+    </div>
+
+    <div style="flex:1;display:flex;gap:16px">
+      <!-- Takeaways -->
+      <div style="flex:1">
+        <div style="font-size:9px;color:var(--green);letter-spacing:3px;margin-bottom:12px">// KEY TAKEAWAYS</div>
+        <div class="takeaway">
+          <div class="t-badge" style="background:var(--red);color:var(--bg)">1</div>
+          <p>Phishing is the <strong style="color:var(--red)">#1 ransomware entry point</strong> — employee security awareness training is critical</p>
+        </div>
+        <div class="takeaway">
+          <div class="t-badge" style="background:var(--orange);color:var(--bg)">2</div>
+          <p>Credential reuse is dangerous — one stolen set of credentials accessed the <strong style="color:var(--orange)">entire hospital server</strong></p>
+        </div>
+        <div class="takeaway">
+          <div class="t-badge" style="background:var(--yellow);color:var(--bg)">3</div>
+          <p>Speed matters — full attack chain from phishing click to hospital lockdown in <strong style="color:var(--yellow)">under 60 seconds</strong></p>
+        </div>
+        <div class="takeaway">
+          <div class="t-badge" style="background:var(--green2);color:var(--bg)">4</div>
+          <p>Detection is possible — Wazuh fired <strong style="color:var(--green)">7 alert categories</strong> giving SOC analysts everything needed to reconstruct the full attack</p>
+        </div>
+        <div class="takeaway" style="border-bottom:none">
+          <div class="t-badge" style="background:var(--blue);color:var(--bg)">5</div>
+          <p>Defense in depth works — <strong style="color:var(--blue)">MFA, email filtering, network segmentation</strong> would have stopped this at multiple points</p>
+        </div>
+      </div>
+
+      <!-- Find our work terminal -->
+      <div style="width:340px">
+        <div class="terminal" style="height:100%">
+          <div class="terminal-bar">
+            <div class="t-dot" style="background:#FF5F56"></div>
+            <div class="t-dot" style="background:#FFBD2E"></div>
+            <div class="t-dot" style="background:#27C93F"></div>
+            <div class="t-title">find_our_work.sh</div>
+          </div>
+          <div class="terminal-body">
+            <div><span class="t-prompt">$ </span><span class="t-cmd">ls -la ./deliverables/</span></div>
+            <div class="t-out"> </div>
+            <div class="t-green2" style="color:var(--green2)">📁 phishing_portal/</div>
+            <div class="t-out">   email.html, verify.html</div>
+            <div class="t-out">   dashboard.html, login.php</div>
+            <div class="t-out"> </div>
+            <div class="t-green2" style="color:var(--green2)">📁 ransomware_sim/</div>
+            <div class="t-out">   ransomware_sim.py</div>
+            <div class="t-out">   watcher.sh, restore.sh</div>
+            <div class="t-out"> </div>
+            <div class="t-green2" style="color:var(--green2)">📁 wazuh_rules/</div>
+            <div class="t-out">   local_rules.xml (18 rules)</div>
+            <div class="t-out"> </div>
+            <div class="t-green2" style="color:var(--green2)">📁 docs/</div>
+            <div class="t-out">   setup_guide.md</div>
+            <div class="t-out">   writeups/, screenshots/</div>
+            <div class="t-out"> </div>
+            <div><span class="t-prompt">$ </span><span class="t-cmd">echo $GITHUB_URL</span></div>
+            <div class="t-blue">[your-github-url-here]</div>
+            <div class="t-out"> </div>
+            <div><span class="t-prompt">$ </span><span class="t-blink"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end slides-wrap -->
+
+<!-- SLIDE DOTS -->
+<div class="scroll-ind" style="position:fixed;bottom:8px;left:50%;transform:translateX(-50%);z-index:50">
+  <div class="s-dot active" onclick="goSlide(0)"></div>
+  <div class="s-dot" onclick="goSlide(1)"></div>
+  <div class="s-dot" onclick="goSlide(2)"></div>
+  <div class="s-dot" onclick="goSlide(3)"></div>
+  <div class="s-dot" onclick="goSlide(4)"></div>
+  <div class="s-dot" onclick="goSlide(5)"></div>
+  <div class="s-dot" onclick="goSlide(6)"></div>
+  <div class="s-dot" onclick="goSlide(7)"></div>
+  <div class="s-dot" onclick="goSlide(8)"></div>
+</div>
+
+<!-- HUD BOTTOM -->
+<div id="hud-bottom">
+  <span>ST. HERA'S HOSPITAL // CYBERLAB CAPSTONE // FICTIONAL LAB — EDUCATIONAL PURPOSES ONLY</span>
+  <span id="slide-counter">SLIDE 01 / 09</span>
+</div>
+
+<script>
+/* ============================================================
+   PARTICLE NETWORK
+   ============================================================ */
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [], mouse = { x: null, y: null };
+const PARTICLE_COUNT = 80;
+const MAX_DIST = 140;
+const GREEN = '#00FF41';
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.vx = (Math.random() - 0.5) * 0.4;
+    this.vy = (Math.random() - 0.5) * 0.4;
+    this.r = Math.random() * 2 + 1;
+    this.alpha = Math.random() * 0.5 + 0.1;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x < 0 || this.x > W) this.vx *= -1;
+    if (this.y < 0 || this.y > H) this.vy *= -1;
+    // Mouse repel
+    if (mouse.x) {
+      const dx = this.x - mouse.x, dy = this.y - mouse.y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      if (d < 80) {
+        this.x += dx/d * 1.5;
+        this.y += dy/d * 1.5;
+      }
+    }
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(0,255,65,${this.alpha})`;
+    ctx.fill();
+  }
+}
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
+}
+
+function drawLines() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i+1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      if (d < MAX_DIST) {
+        const a = (1 - d/MAX_DIST) * 0.15;
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(0,255,65,${a})`;
+        ctx.lineWidth = 0.5;
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.stroke();
+      }
+    }
+    // Lines to mouse
+    if (mouse.x) {
+      const dx = particles[i].x - mouse.x;
+      const dy = particles[i].y - mouse.y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      if (d < 150) {
+        const a = (1 - d/150) * 0.3;
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(0,255,65,${a})`;
+        ctx.lineWidth = 0.8;
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(mouse.x, mouse.y);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+  particles.forEach(p => { p.update(); p.draw(); });
+  drawLines();
+  requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', () => { resize(); initParticles(); });
+window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mouseleave', () => { mouse.x = null; mouse.y = null; });
+
+resize(); initParticles(); animate();
+
+/* ============================================================
+   HUD CLOCK
+   ============================================================ */
+function updateClock() {
+  const now = new Date();
+  document.getElementById('hud-time').textContent =
+    now.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}) + ' ' +
+    now.toLocaleTimeString('en-US',{hour12:false});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ============================================================
+   SLIDE NAVIGATION
+   ============================================================ */
+let cur = 0;
+const slideEls = document.querySelectorAll('.slide');
+const dots = document.querySelectorAll('.s-dot');
+const total = slideEls.length;
+const counter = document.getElementById('slide-counter');
+const pfill = document.getElementById('progress-fill');
+
+function goSlide(n) {
+  slideEls[cur].classList.remove('active');
+  slideEls[cur].classList.add('exit');
+  setTimeout(() => slideEls[cur < n ? cur : cur].classList.remove('exit'), 500);
+  cur = ((n % total) + total) % total;
+  slideEls[cur].classList.add('active');
+  dots.forEach((d,i) => d.classList.toggle('active', i === cur));
+  counter.textContent = 'SLIDE ' + String(cur+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+  pfill.style.width = ((cur+1)/total*100) + '%';
+  document.getElementById('prev-btn').style.opacity = cur === 0 ? '0.3' : '1';
+  document.getElementById('next-btn').style.opacity = cur === total-1 ? '0.3' : '1';
+}
+
+function changeSlide(dir) { goSlide(cur + dir); }
+
+document.addEventListener('keydown', e => {
+  if (['ArrowRight','ArrowDown','Space',' '].includes(e.key) || e.code === 'Space') {
+    e.preventDefault(); changeSlide(1);
+  } else if (['ArrowLeft','ArrowUp'].includes(e.key)) {
+    e.preventDefault(); changeSlide(-1);
+  }
+});
+
+let tx = 0;
+document.addEventListener('touchstart', e => tx = e.touches[0].clientX);
+document.addEventListener('touchend', e => {
+  const d = tx - e.changedTouches[0].clientX;
+  if (Math.abs(d) > 50) changeSlide(d > 0 ? 1 : -1);
+});
+
+goSlide(0);
+</script>
 </body>
 </html>
