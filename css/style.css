@@ -1,0 +1,268 @@
+/* ============================
+   GLOBAL THEME
+============================ */
+:root {
+  --dark: #0D1117;
+  --card: #161B22;
+  --border: #30363D;
+  --red: #FF3B3B;
+  --blue: #58A6FF;
+  --green: #3FB950;
+  --orange: #F0883E;
+  --yellow: #E3B341;
+  --purple: #9F7AEA;
+  --white: #FFFFFF;
+  --gray: #8B949E;
+  --light: #C9D1D9;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--dark);
+  color: var(--white);
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ============================
+   PROGRESS BAR + COUNTER
+============================ */
+#progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: var(--red);
+  transition: width 0.4s ease;
+  z-index: 100;
+}
+
+#counter {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  font-size: 13px;
+  color: var(--gray);
+  z-index: 100;
+  font-family: monospace;
+}
+
+#hint {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: var(--border);
+  z-index: 100;
+}
+
+/* ============================
+   NAV BUTTONS
+============================ */
+.nav-btn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(22,27,34,0.8);
+  border: 1px solid var(--border);
+  color: var(--gray);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  color: var(--white);
+  border-color: var(--blue);
+}
+
+#prev-btn { left: 16px; }
+#next-btn { right: 16px; }
+
+/* ============================
+   SLIDES
+============================ */
+#slides {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+}
+
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 48px 64px;
+  display: none;
+  flex-direction: column;
+  background: var(--dark);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.slide.active {
+  display: flex;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================
+   TYPOGRAPHY
+============================ */
+h1 {
+  font-size: 42px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+h2 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+p, li {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--light);
+}
+
+/* ============================
+   CARDS + TAGS
+============================ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  margin: 2px;
+}
+
+/* ============================
+   GRID LAYOUTS
+============================ */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+/* ============================
+   SCREENSHOTS
+============================ */
+.screenshot {
+  background: var(--card);
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray);
+  font-size: 13px;
+  text-align: center;
+  padding: 16px;
+  min-height: 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+.screenshot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* ============================
+   VM CARDS
+============================ */
+.vm-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  text-align: center;
+}
+
+.vm-name {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.vm-role {
+  font-size: 12px;
+  color: var(--gray);
+  margin-bottom: 8px;
+}
+
+.vm-ip {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--gray);
+  margin-bottom: 10px;
+}
+
+/* ============================
+   MOBILE RESPONSIVE
+============================ */
+@media (max-width: 768px) {
+  .slide { padding: 24px; }
+  h2 { font-size: 22px; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+}
