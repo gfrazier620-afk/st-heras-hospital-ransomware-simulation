@@ -65,7 +65,8 @@ canvas{position:fixed;top:0;left:0;pointer-events:none;}
 .sl{position:absolute;top:0;left:0;width:100%;height:100%;
   padding:32px 68px;display:flex;flex-direction:column;
   opacity:0;pointer-events:none;transform:translateX(30px);
-  transition:opacity .4s ease,transform .4s ease;}
+  transition:opacity .4s ease,transform .4s ease;
+  overflow:hidden;}
 .sl.on{opacity:1;pointer-events:all;transform:translateX(0);}
 .sl.ex{opacity:0;transform:translateX(-30px);}
 /* GLITCH TRANSITION */
@@ -160,8 +161,11 @@ p{font-size:12px;line-height:1.7;color:var(--gray2);}
 .imp{display:flex;gap:10px;margin-bottom:12px;}
 .impb{width:3px;border-radius:2px;flex-shrink:0;}
 /* SCREENSHOT */
-.ss{background:rgba(0,8,0,.7);border:1px dashed var(--green3);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--green3);text-align:center;padding:10px;position:relative;overflow:hidden;min-height:100px;}
-.ss img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;border-radius:4px;}
+.ss{background:rgba(0,8,0,.7);border:1px dashed var(--green3);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--green3);text-align:center;padding:10px;position:relative;overflow:hidden;min-height:140px;}
+/* Image auto-sizes to fill box, fully visible, no cropping */
+.ss img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;border-radius:4px;background:rgba(0,0,0,0);}
+/* Hide placeholder text once an image is loaded */
+.ss img ~ .ss-ic, .ss img ~ .ss-lb { display:none; }
 .ss-ic{font-size:24px;margin-bottom:6px;opacity:.25;}
 .ss-lb{font-size:9px;opacity:.4;font-family:var(--mono);}
 /* ALERT POPUPS */
@@ -403,17 +407,17 @@ p{font-size:12px;line-height:1.7;color:var(--gray2);}
     </div>
   </div>
 
-  <div class="g2" style="gap:12px">
-    <div class="card y">
-      <div class="clabel" style="color:var(--yellow)">// FICTIONAL LAB — All data simulated, isolated network</div>
-      <div class="g2" style="gap:8px;margin-top:4px">
-        <div><p>🏥 Hospital: St. Hera's Hospital</p><p>👩‍⚕️ Nurse: Nicole Rivera (n.rivera)</p></div>
-        <div><p>🌐 Domain: stherashospital.org</p><p>📋 Patients: John Doe, Maria Vasquez</p></div>
-      </div>
+  <div class="card y" style="margin-bottom:10px">
+    <div class="clabel" style="color:var(--yellow)">// FICTIONAL LAB — All data simulated, isolated network</div>
+    <div class="g2" style="gap:8px;margin-top:4px">
+      <div><p>🏥 Hospital: St. Hera's Hospital</p><p>👩‍⚕️ Nurse: Nicole Rivera (n.rivera)</p></div>
+      <div><p>🌐 Domain: stherashospital.org</p><p>📋 Patients: John Doe, Maria Vasquez</p></div>
     </div>
-    <div class="ss" style="height:auto; overflow:hidden; padding:8px;">
-      <img src="images/virtualbox.png" alt="VirtualBox screenshot" style="width:100%; height:auto; display:block; border-radius:4px;">
-    </div>
+  </div>
+  <!-- Full-width screenshot row with plenty of height -->
+  <div class="ss" style="flex:1;min-height:180px;">
+    <div class="ss-ic">🖥️</div>
+    <img src="images/virtualbox.png" alt="VirtualBox screenshot">
   </div>
 </div>
 
@@ -466,30 +470,30 @@ p{font-size:12px;line-height:1.7;color:var(--gray2);}
   <div class="scan"></div>
   <div class="stag">04 / Live Demo</div>
   <h2>Attack Phase Evidence</h2>
-  <div class="g3" style="flex:1;gap:10px">
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <div style="font-size:9px;color:var(--red);letter-spacing:2px">// PHASE 01 — PHISHING EMAIL</div>
-      <div class="ss" style="flex:1"><div class="ss-ic">📧</div><div class="ss-lb">email.html — fake Outlook<br><code>screenshots/email.png</code></div></div>
+  <div class="g3" style="flex:1;gap:10px;min-height:0;">
+    <div style="display:flex;flex-direction:column;gap:6px;min-height:0;">
+      <div style="font-size:9px;color:var(--red);letter-spacing:2px;flex-shrink:0">// PHASE 01 — PHISHING EMAIL</div>
+      <div class="ss" style="flex:1;min-height:0;"><div class="ss-ic">📧</div><div class="ss-lb">email.html — fake Outlook<br><code>screenshots/email.png</code></div></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <div style="font-size:9px;color:var(--orange);letter-spacing:2px">// PHASE 02 — CRED CAPTURE</div>
-      <div class="ss" style="flex:1"><div class="ss-ic">🔑</div><div class="ss-lb">creds.txt terminal<br><code>screenshots/creds.png</code></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px;min-height:0;">
+      <div style="font-size:9px;color:var(--orange);letter-spacing:2px;flex-shrink:0">// PHASE 02 — CRED CAPTURE</div>
+      <div class="ss" style="flex:1;min-height:0;"><div class="ss-ic">🔑</div><div class="ss-lb">creds.txt terminal<br><code>screenshots/creds.png</code></div></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <div style="font-size:9px;color:var(--yellow);letter-spacing:2px">// PHASE 03 — FAKE DASHBOARD</div>
-      <div class="ss" style="flex:1"><div class="ss-ic">🏥</div><div class="ss-lb">dashboard.html portal<br><code>screenshots/dashboard.png</code></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px;min-height:0;">
+      <div style="font-size:9px;color:var(--yellow);letter-spacing:2px;flex-shrink:0">// PHASE 03 — FAKE DASHBOARD</div>
+      <div class="ss" style="flex:1;min-height:0;"><div class="ss-ic">🏥</div><div class="ss-lb">dashboard.html portal<br><code>screenshots/dashboard.png</code></div></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <div style="font-size:9px;color:var(--green2);letter-spacing:2px">// PHASE 04 — SMB ACCESS</div>
-      <div class="ss" style="flex:1"><div class="ss-ic">📂</div><div class="ss-lb">smbclient PatientRecords<br><code>screenshots/smb.png</code></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px;min-height:0;">
+      <div style="font-size:9px;color:var(--green2);letter-spacing:2px;flex-shrink:0">// PHASE 04 — SMB ACCESS</div>
+      <div class="ss" style="flex:1;min-height:0;"><div class="ss-ic">📂</div><div class="ss-lb">smbclient PatientRecords<br><code>screenshots/smb.png</code></div></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <div style="font-size:9px;color:var(--blue);letter-spacing:2px">// PHASE 05 — LOCKED FILES</div>
-      <div class="ss" style="flex:1"><div class="ss-ic">🔒</div><div class="ss-lb">RansomwareDemo .locked<br><code>screenshots/locked.png</code></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px;min-height:0;">
+      <div style="font-size:9px;color:var(--blue);letter-spacing:2px;flex-shrink:0">// PHASE 05 — LOCKED FILES</div>
+      <div class="ss" style="flex:1;min-height:0;"><div class="ss-ic">🔒</div><div class="ss-lb">RansomwareDemo .locked<br><code>screenshots/locked.png</code></div></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <div style="font-size:9px;color:var(--purple);letter-spacing:2px">// PHASE 06 — WAZUH DASHBOARD</div>
-      <div class="ss" style="flex:1"><div class="ss-ic">📊</div><div class="ss-lb">CYBERLAB Security Monitor<br><code>screenshots/wazuh.png</code></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px;min-height:0;">
+      <div style="font-size:9px;color:var(--purple);letter-spacing:2px;flex-shrink:0">// PHASE 06 — WAZUH DASHBOARD</div>
+      <div class="ss" style="flex:1;min-height:0;"><div class="ss-ic">📊</div><div class="ss-lb">CYBERLAB Security Monitor<br><code>screenshots/wazuh.png</code></div></div>
     </div>
   </div>
 </div>
