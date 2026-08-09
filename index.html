@@ -252,7 +252,7 @@ p{font-size:12px;line-height:1.7;color:var(--gray2);}
     <span class="hl">SYSTEM:</span><span>CYBERLAB_v2.0</span>&nbsp;&nbsp;
     <span class="hl">STATUS:</span><span class="pdot"></span><span style="margin-left:6px">ACTIVE</span>&nbsp;&nbsp;
     <span class="hl">TARGET:</span><span>stherashospital.org</span>&nbsp;&nbsp;
-    <span class="hl">AGENTS:</span><span id="hud-agents" style="color:var(--green)">3 ONLINE</span>
+    <span class="hl">AGENTS:</span><span id="hud-agents" style="color:var(--green)">2 ONLINE</span>
   </div>
   <div id="hud-time" style="font-size:11px;opacity:.8"></div>
 </div>
@@ -855,7 +855,7 @@ const bootLines=[
   '  [+] 192.168.0.237 WIN-HOSPITAL-SRV ... REACHABLE',
   '  [+] 192.168.0.177 Wazuh-OVA .......... REACHABLE',
   '',
-  'Wazuh agents: 3 ONLINE',
+  'Wazuh agents: 2 ONLINE',
   'SIEM dashboard: CYBERLAB SECURITY MONITOR',
   '',
   '[ SIMULATION READY ]',
@@ -1066,7 +1066,7 @@ function runCountdown(){
       el.style.fontSize='36px';el.style.letterSpacing='6px';
       lb.textContent='HOSPITAL SYSTEMS OFFLINE';
       ld.style.display='flex';
-      setTimeout(()=>{ld.style.display='none';el.textContent='0:60';el.style.fontSize='48px';el.style.color='var(--red)';el.style.letterSpacing='4px';lb.textContent='SIMULATION TIMER';secs=60;},2500);
+      setTimeout(()=>{ld.style.display='none';el.textContent='0:60';el.style.fontSize='48px';el.style.color='var(--red)';el.style.letterSpacing='4px';lb.textContent='SIMULATION TIMER';secs=60;},8500);
     }
   },1000);
 }
