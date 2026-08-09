@@ -331,10 +331,10 @@ p{font-size:12px;line-height:1.7;color:var(--gray2);}
       <div class="card r">
         <div class="clabel" style="color:var(--red)">// THE PROBLEM</div>
         <p style="font-size:13px;margin-bottom:10px">Hospitals are the <strong style="color:var(--red)">#1 ransomware target</strong>.
-        In 2024, over <span id="cnt-hospitals" style="color:var(--red);font-weight:700;font-size:18px">0</span> U.S. hospitals were hit —
+        In 2025, over <span id="cnt-hospitals" style="color:var(--red);font-weight:700;font-size:18px">0</span> U.S. hospitals were hit —
         disrupting patient care and costing millions.</p>
         <div style="background:rgba(139,0,0,.15);border:1px solid rgba(255,59,59,.2);border-radius:3px;padding:10px 14px;margin-top:8px">
-          <div style="font-size:9px;color:var(--red);letter-spacing:2px;margin-bottom:4px">PRIMARY ENTRY VECTOR — 91% OF ATTACKS</div>
+          <div style="font-size:9px;color:var(--red);letter-spacing:2px;margin-bottom:4px">PRIMARY ENTRY VECTOR</div>
           <div style="font-size:20px;font-weight:900;color:var(--red)">A SINGLE PHISHING EMAIL</div>
         </div>
       </div>
@@ -972,7 +972,7 @@ updateHUD();
 function initSlide2(){
   // Counter animation: 0 → 140
   const el=document.getElementById('cnt-hospitals');
-  let n=0;const t=setInterval(()=>{el.textContent=n++;if(n>140)clearInterval(t);},18);
+  let n=0;const t=setInterval(()=>{el.textContent=n++;if(n>445)clearInterval(t);},18);
   // Self typing terminal
   const cmd=document.getElementById('t2-cmd');
   const out=document.getElementById('t2-out');
