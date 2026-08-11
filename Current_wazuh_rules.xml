@@ -1,0 +1,159 @@
+<group name="operation_code_blue,capstone,windows,">
+
+  <!-- Threat-listed outbound connection -->
+  <rule id="100099" level="9">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^5156$</field>
+    <list field="win.eventdata.destAddress"
+          lookup="address_match_key">etc/lists/ocblue_suspicious_destinations</list>
+    <description>Operation Code Blue: Hospital workstation connected to threat-listed destination $(win.eventdata.destAddress)</description>
+    <group>phishing,network_connection,threat_intelligence,suspicious_destination,soc_queue,</group>
+  </rule>
+
+  <!-- Baseline evidence for protected patient-record activity -->
+  <rule id="100100" level="3">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4663$</field>
+    <field name="win.eventdata.objectName" type="pcre2">(?i)HospitalLab.*PatientRecords</field>
+    <description>Operation Code Blue: Patient record activity by $(win.eventdata.subjectUserName), file: $(win.eventdata.objectName), process: $(win.eventdata.processName)</description>
+    <group>patient_records,file_access,investigation_context,</group>
+  </rule>
+
+  <!-- Unexpected remote Server Message Block access to PatientRecords -->
+  <rule id="100101" level="9">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^5145$</field>
+    <field name="win.eventdata.shareName" type="pcre2">(?i)PatientRecords</field>
+    <list field="win.eventdata.ipAddress"
+          lookup="not_address_match_key">etc/lists/ocblue_trusted_smb_sources</list>
+    <description>Operation Code Blue: PatientRecords accessed from unapproved source $(win.eventdata.ipAddress) by $(win.eventdata.subjectUserName), target: $(win.eventdata.relativeTargetName)</description>
+    <group>patient_records,smb_access,remote_access,unexpected_source,soc_queue,</group>
+  </rule>
+
+  <!-- Quiet correlation seed: blocked Transmission Control Protocol probe -->
+  <rule id="100102" level="2">
+    <if_sid>60104</if_sid>
+    <field name="win.system.eventID">^5152$</field>
+    <field name="win.eventdata.destAddress">^192\.168\.56\.102$</field>
+    <field name="win.eventdata.protocol">^6$</field>
+    <options>no_log</options>
+    <description>Operation Code Blue: Blocked TCP probe from $(win.eventdata.sourceAddress) to protected server port $(win.eventdata.destPort)</description>
+    <group>network_probe,firewall,reconnaissance,</group>
+  </rule>
+
+  <!-- Behavior-based rapid multi-port scan -->
+  <rule id="100103"
+        level="10"
+        frequency="40"
+        timeframe="5"
+        ignore="60">
+    <if_matched_sid>100102</if_matched_sid>
+    <same_field>win.eventdata.sourceAddress</same_field>
+    <different_field>win.eventdata.destPort</different_field>
+    <description>Operation Code Blue: Rapid multi-port scan detected against patient server 192.168.56.102 from $(win.eventdata.sourceAddress)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>port_scan,network_service_discovery,reconnaissance,soc_queue,</group>
+  </rule>
+
+  <!-- Quiet seed: successful network logon on the patient server -->
+  <rule id="100104" level="2">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4624$</field>
+    <field name="win.eventdata.logonType">^3$</field>
+    <options>no_log</options>
+    <description>Operation Code Blue: Network logon on patient server from $(win.eventdata.ipAddress) using $(win.eventdata.targetUserName)</description>
+    <group>network_logon,credential_use,</group>
+  </rule>
+
+  <!-- Failed network authentication -->
+  <rule id="100105" level="6">
+    <if_sid>60104</if_sid>
+    <field name="win.system.eventID">^4625$</field>
+    <field name="win.eventdata.logonType">^3$</field>
+    <description>Operation Code Blue: Failed network logon from $(win.eventdata.ipAddress) for account $(win.eventdata.targetUserName)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,network_logon,investigation_context,</group>
+  </rule>
+
+  <!-- Repeated failed network authentication from one source -->
+  <rule id="100106"
+        level="10"
+        frequency="5"
+        timeframe="60"
+        ignore="60">
+    <if_matched_sid>100105</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <description>Operation Code Blue: Multiple failed network logons from $(win.eventdata.ipAddress) within 60 seconds</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>brute_force,authentication_failed,network_logon,soc_queue,</group>
+  </rule>
+
+  <!-- Successful network logon outside expected business hours -->
+  <rule id="100107" level="9">
+    <if_sid>100104</if_sid>
+    <time>11 pm - 6 am</time>
+    <description>Operation Code Blue: Network logon outside business hours from $(win.eventdata.ipAddress) using $(win.eventdata.targetUserName)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>after_hours,network_logon,suspicious_logon,soc_queue,</group>
+  </rule>
+
+  <!-- Ransomware-style locked file detected by File Integrity Monitoring -->
+  <rule id="100108" level="12">
+    <if_sid>554</if_sid>
+    <field name="file"
+           type="pcre2">(?i)^C:\\HospitalLab\\PatientRecords\\.*\.locked$</field>
+    <description>Operation Code Blue: File with .locked extension added in PatientRecords: $(file)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,impact,locked_extension,soc_queue,</group>
+  </rule>
+
+  <!-- Ransom-note file detected by File Integrity Monitoring -->
+  <rule id="100109" level="12">
+    <if_sid>554</if_sid>
+    <field name="file"
+           type="pcre2">(?i)^C:\\HospitalLab\\PatientRecords\\ransom_note\.txt$</field>
+    <description>Operation Code Blue: Ransom-note file added to PatientRecords: $(file)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,impact,ransom_note,soc_queue,</group>
+  </rule>
+
+  <!-- Ransom-note access elevated from general patient-record activity -->
+  <rule id="100110" level="12">
+    <if_sid>100100</if_sid>
+    <field name="win.eventdata.objectName"
+           type="pcre2">(?i)HospitalLab.*PatientRecords.*ransom_note\.txt$</field>
+    <description>Operation Code Blue: Ransom note accessed by $(win.eventdata.subjectUserName): $(win.eventdata.objectName)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,impact,ransom_note_access,soc_queue,</group>
+  </rule>
+
+  <!-- Multiple distinct locked files detected rapidly -->
+  <rule id="100111"
+        level="15"
+        frequency="3"
+        timeframe="30"
+        ignore="60">
+    <if_matched_sid>100108</if_matched_sid>
+    <different_field>file</different_field>
+    <description>Operation Code Blue: Multiple distinct files received the .locked extension within 30 seconds</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,impact,multiple_locked_files,soc_queue,</group>
+  </rule>
+
+</group>
